@@ -56,28 +56,49 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpl
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !previewUrl) return;
+    if (!file) return;
 
     setIsSaving(true);
-    
-    // Simulate network delay
-    setTimeout(() => {
-      const newPhoto: Photo = {
-        id: Date.now().toString(),
-        url: previewUrl, // In a real app, this would be the S3/Cloudinary URL
-        title,
-        description,
-        category,
-        dateAdded: Date.now()
-      };
 
-      onUpload(newPhoto);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', title);
+      formData.append('description', description);
+      formData.append('category', category as unknown as string);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) throw new Error('Upload failed');
+
+      const saved = await res.json() as Photo;
+      onUpload(saved);
       resetForm();
-      setIsSaving(false);
       onClose();
-    }, 800);
+    } catch (err) {
+      console.error('Upload failed, falling back to local preview', err);
+      // Fallback to local preview behavior so UX isn't blocked
+      if (previewUrl) {
+        const newPhoto: Photo = {
+          id: Date.now().toString(),
+          url: previewUrl,
+          title,
+          description,
+          category,
+          dateAdded: Date.now()
+        };
+        onUpload(newPhoto);
+      }
+      resetForm();
+      onClose();
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const resetForm = () => {

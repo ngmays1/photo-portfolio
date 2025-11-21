@@ -62,10 +62,22 @@ const App: React.FC = () => {
   const [photos, setPhotos] = useState<Photo[]>(INITIAL_PHOTOS);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  // In a real scenario with Python backend, we would fetch photos here
+  // Try to load photos from backend if available (falls back to INITIAL_PHOTOS)
   useEffect(() => {
     console.log("Initializing portfolio app...");
-    // fetch('/api/photos').then(...)
+    (async () => {
+      try {
+        const res = await fetch('/api/photos');
+        if (res.ok) {
+          const remotePhotos = await res.json() as Photo[];
+          if (Array.isArray(remotePhotos) && remotePhotos.length > 0) {
+            setPhotos(remotePhotos);
+          }
+        }
+      } catch (err) {
+        console.warn('Photo backend not available', err);
+      }
+    })();
   }, []);
 
   const handleUpload = (newPhoto: Photo) => {
